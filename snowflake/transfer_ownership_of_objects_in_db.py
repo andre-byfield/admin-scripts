@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import snowflake.connector
 from snowflake.connector.errors import ProgrammingError
 
-def transfer_ownership(account, user, warehouse, role, new_owner_role, database_name, schema_name):
+def transfer_ownership(account, user, warehouse, role, database_owner_role, database_name, schema_name):
 
     counter = 0
 
@@ -29,16 +29,16 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
         # If no schema_name is passed, we'll transfer ownership of the database and everything it contains
         if schema_name is None or schema_name.strip() == "":
             # Transfer database ownership if no schema is passed
-            cursor.execute(f"SELECT DATABASE_NAME, DATABASE_OWNER FROM {database_name}.INFORMATION_SCHEMA.DATABASES WHERE DATABASE_NAME = '{database_name}'")
+            cursor.execute(f"SHOW DATABASES LIKE '{database_name}'")
             databases = cursor.fetchall()
 
             for database in databases:
-                database_name = database[0]
-                database_owner = database[1]
+                database_name = database[1]
+                database_owner = database[5]
 
-                if database_owner != new_owner_role:
-                    cursor.execute(f"GRANT OWNERSHIP ON DATABASE {database_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                    print(f"Transferred ownership of database {database_name} to {new_owner_role}")
+                if database_owner != database_owner_role:
+                    cursor.execute(f"GRANT OWNERSHIP ON DATABASE {database_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                    print(f"Transferred ownership of database {database_name} to {database_owner_role}")
                     counter += 1
         else:
             # Otherwise, just get transfer the schema and objects it contains
@@ -53,9 +53,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
             schema_owner = schema[1] # Schema owner is in the second column
 
             # Transfer schema ownership
-            if schema_owner != new_owner_role:
-                cursor.execute(f"GRANT OWNERSHIP ON SCHEMA {database_name}.{schema_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                print(f"Transferred ownership of schema {schema_name} to {new_owner_role}")
+            if schema_owner != database_owner_role:
+                cursor.execute(f"GRANT OWNERSHIP ON SCHEMA {database_name}.{schema_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                print(f"Transferred ownership of schema {schema_name} to {database_owner_role}")
                 counter += 1
 
             # Transfer ownership of tables
@@ -66,9 +66,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 table_name = table[1]  # Table name is in the second column
                 table_owner = table[9] # Table owner is in the tenth column
 
-                if table_owner != new_owner_role:
-                    cursor.execute(f"GRANT OWNERSHIP ON TABLE {database_name}.{schema_name}.{table_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                    print(f"Transferred ownership of table {table_name} in schema {schema_name} to {new_owner_role}")
+                if table_owner != database_owner_role:
+                    cursor.execute(f"GRANT OWNERSHIP ON TABLE {database_name}.{schema_name}.{table_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                    print(f"Transferred ownership of table {table_name} in schema {schema_name} to {database_owner_role}")
                     counter += 1
 
             # Transfer ownership of views
@@ -79,9 +79,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 view_name = view[1]  # view name is in the second column
                 view_owner = view[5] # view owner is in the sixth column
 
-                if view_owner != new_owner_role:
-                    cursor.execute(f"GRANT OWNERSHIP ON VIEW {database_name}.{schema_name}.{view_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                    print(f"Transferred ownership of view {view_name} in schema {schema_name} to {new_owner_role}")
+                if view_owner != database_owner_role:
+                    cursor.execute(f"GRANT OWNERSHIP ON VIEW {database_name}.{schema_name}.{view_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                    print(f"Transferred ownership of view {view_name} in schema {schema_name} to {database_owner_role}")
                     counter += 1
 
             # Transfer ownership of file formats
@@ -92,9 +92,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 file_format_name = file_format[1]  # file format name is in the second column
                 file_format_owner = file_format[5] # file format owner is in the sixth column
 
-                if file_format_owner != new_owner_role:
-                    cursor.execute(f"GRANT OWNERSHIP ON FILE FORMAT {database_name}.{schema_name}.{file_format_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                    print(f"Transferred ownership of file format {file_format_name} in schema {schema_name} to {new_owner_role}")
+                if file_format_owner != database_owner_role:
+                    cursor.execute(f"GRANT OWNERSHIP ON FILE FORMAT {database_name}.{schema_name}.{file_format_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                    print(f"Transferred ownership of file format {file_format_name} in schema {schema_name} to {database_owner_role}")
                     counter += 1
 
             # Transfer ownership of sequences
@@ -105,9 +105,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 sequence_name = sequence[0]  # sequence name is in the first column
                 sequence_owner = sequence[6] # sequence owner is in the seventh column
 
-                if sequence_owner != new_owner_role:
-                    cursor.execute(f"GRANT OWNERSHIP ON SEQUENCE {database_name}.{schema_name}.{sequence_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                    print(f"Transferred ownership of sequence {sequence_name} in schema {schema_name} to {new_owner_role}")
+                if sequence_owner != database_owner_role:
+                    cursor.execute(f"GRANT OWNERSHIP ON SEQUENCE {database_name}.{schema_name}.{sequence_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                    print(f"Transferred ownership of sequence {sequence_name} in schema {schema_name} to {database_owner_role}")
                     counter += 1
 
             # Transfer ownership of tasks
@@ -118,9 +118,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 task_name = task[1]  # task name is in the second column
                 task_owner = task[5] # task owner is in the sixth column
 
-                if task_owner != new_owner_role:
-                    cursor.execute(f"GRANT OWNERSHIP ON TASK {database_name}.{schema_name}.{task_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                    print(f"Transferred ownership of task {task_name} in schema {schema_name} to {new_owner_role}")
+                if task_owner != database_owner_role:
+                    cursor.execute(f"GRANT OWNERSHIP ON TASK {database_name}.{schema_name}.{task_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                    print(f"Transferred ownership of task {task_name} in schema {schema_name} to {database_owner_role}")
                     counter += 1
 
             # Transfer ownership of INTERNAL stages
@@ -131,9 +131,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 stage_name = stage[0]  # stage name is in the first column
                 stage_owner = stage[1] # stage owner is in the second column
 
-                if stage_owner != new_owner_role:
-                    cursor.execute(f"GRANT OWNERSHIP ON STAGE {database_name}.{schema_name}.{stage_name} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                    print(f"Transferred ownership of stage {stage_name} in schema {schema_name} to {new_owner_role}")
+                if stage_owner != database_owner_role:
+                    cursor.execute(f"GRANT OWNERSHIP ON STAGE {database_name}.{schema_name}.{stage_name} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                    print(f"Transferred ownership of stage {stage_name} in schema {schema_name} to {database_owner_role}")
                     counter += 1
 
             # Transfer ownership of functions
@@ -145,7 +145,7 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 function_owner = function[1] # function owner is in the second column
                 function_signature = function[2] # argument signature is the third column
 
-                if function_owner != new_owner_role:
+                if function_owner != database_owner_role:
                     # we've got to parse the data types out of our signature
                     # let's remove the parentheses, swap commas with a space, then tokenize
                     function_tokens = function_signature.replace("(", "").replace(")", "").replace(",", " ").split()
@@ -158,9 +158,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                         
                     function_argument_string = "(" + function_argument_string[:-1] + ")"
 
-                    if function_owner != new_owner_role:
-                        cursor.execute(f"GRANT OWNERSHIP ON FUNCTION {database_name}.{schema_name}.{function_name}{function_argument_string} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                        print(f"Transferred ownership of function {function_name} in schema {schema_name} to {new_owner_role}")
+                    if function_owner != database_owner_role:
+                        cursor.execute(f"GRANT OWNERSHIP ON FUNCTION {database_name}.{schema_name}.{function_name}{function_argument_string} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                        print(f"Transferred ownership of function {function_name} in schema {schema_name} to {database_owner_role}")
                         counter += 1
 
             # Transfer ownership of procedures
@@ -172,7 +172,7 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                 procedure_owner = procedure[1] # procedure owner is in the second column
                 procedure_signature = procedure[2] # argument signature is the third column
 
-                if procedure_owner != new_owner_role:
+                if procedure_owner != database_owner_role:
                     # we've got to parse the data types out of our signature
                     # let's remove the parentheses, swap commas with a space, then tokenize
                     procedure_tokens = procedure_signature.replace("(", "").replace(")", "").replace(",", " ").split()
@@ -185,9 +185,9 @@ WHERE schema_name not in ('INFORMATION_SCHEMA', 'PUBLIC')
                         
                     procedure_argument_string = "(" + procedure_argument_string[:-1] + ")"
 
-                    if procedure_owner != new_owner_role:
-                        cursor.execute(f"GRANT OWNERSHIP ON PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_argument_string} TO ROLE {new_owner_role} COPY CURRENT GRANTS")
-                        print(f"Transferred ownership of procedure {procedure_name} in schema {schema_name} to {new_owner_role}")
+                    if procedure_owner != database_owner_role:
+                        cursor.execute(f"GRANT OWNERSHIP ON PROCEDURE {database_name}.{schema_name}.{procedure_name}{procedure_argument_string} TO ROLE {database_owner_role} COPY CURRENT GRANTS")
+                        print(f"Transferred ownership of procedure {procedure_name} in schema {schema_name} to {database_owner_role}")
                         counter += 1
 
         # Let's wrap this up
@@ -210,9 +210,10 @@ account = os.getenv('ACCOUNT')
 user = os.getenv('USER')
 warehouse = os.getenv('WAREHOUSE')
 role = os.getenv('ROLE')
-new_owner_role = os.getenv('NEW_OWNER_ROLE')
+
+database_owner_role = os.getenv('DATABASE_OWNER_ROLE')
 database_name = os.getenv('DATABASE_NAME')
 schema_name = os.getenv('SCHEMA_NAME') # empty string will transfer all schema in database
 
 # Execute the transfer
-transfer_ownership(account, user, warehouse, role, new_owner_role, database_name, schema_name)
+transfer_ownership(account, user, warehouse, role, database_owner_role, database_name, schema_name)
