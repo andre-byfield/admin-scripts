@@ -1,2 +1,3 @@
 venv/
+general/.env
 snowflake/.env

@@ -24,7 +24,9 @@ def create_database(account, user, warehouse, role, database_owner_role, databas
             print(f"Role {database_owner_role} does not exist. Creating it...")
             cursor.execute(f"CREATE ROLE IF NOT EXISTS {database_owner_role}")
             print(f"Role {database_owner_role} created successfully.")
-            cursor.execute(f"GRANT OWNERSHIP ON ROLE {database_owner_role} TO ROLE SECURITYADMIN")
+            cursor.execute(f"GRANT OWNERSHIP ON ROLE {database_owner_role} TO ROLE SECURITYADMIN") # transfer ownership to SECURITY
+            cursor.execute(f"GRANT ROLE {database_owner_role} TO ROLE SYSADMIN") # grant new role to SYSADMIN
+            cursor.execute(f"GRANT ROLE {database_owner_role} TO USER \"{user.upper()}\"") # let's add the executor to the new role
         else:
             print(f"Role {database_owner_role} already exists.")
 
